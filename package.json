@@ -1,0 +1,22 @@
+{
+  "name": "koishi-plugin-minecraft-rcon-command-remake",
+  "description": "minecraft-rcon-command插件的重制版，通过rcon实现查看在线人数，添加白名单等功能",
+  "version": "0.0.1",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "license": "MIT",
+  "scripts": {},
+  "keywords": [
+    "chatbot",
+    "koishi",
+    "plugin"
+  ],
+  "devDependencies": {},
+  "peerDependencies": {
+    "koishi": "^4.17.9"
+  }
+}
