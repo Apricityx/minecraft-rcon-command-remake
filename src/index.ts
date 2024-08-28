@@ -34,7 +34,8 @@ export const Config: Schema = Schema.intersect([
   Schema.union([
     Schema.object({
       checkAllowedGroup: Schema.const(true).required(),
-      allowedGroups: Schema.array(Schema.string()).description('允许使用指令的群聊')
+      allowedGroups: Schema.array(Schema.string()).description('允许使用指令的群聊'),
+      refusedText: Schema.string().description('拒绝使用指令时的回复').default('当前群聊不在允许的群聊列表中，别干坏事哦~'),
     }),
     Schema.object({}),
   ]),
