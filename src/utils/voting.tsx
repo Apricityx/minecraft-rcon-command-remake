@@ -3,11 +3,20 @@ import {Context, Schema} from 'koishi'
 import {sleep} from 'koishi';
 
 // import {Config} from "../index";
+const votingGroup = {}
 
 export async function startVoting(session: any, ctx: any, message: string, config: any): Promise<boolean> {
+  if (config.checkAllowedGroup) {
+    const logger = ctx.logger('minecraft-rcon-command')
+    logger.info(config.allowedGroups)
+    if (!config.allowedGroups.includes(session.guildId)) {
+      session.send('当前群聊不在允许的群聊列表中，别干坏事哦~')
+      return false
+    }
+  }
   const logger = ctx.logger('minecraft-rcon-command')
-  const votingGroup = {}
-  const helpMessage = config.voteHelpMessage
+  const helpMessage = config.voteHelpMessage.replace(/\\n/g, '\n')
+  // 处理\n的转义
   const ProgressMessageConstructor = (AgreeNum: number) => {
     let message = ''
     for (let i = 0; i < AgreeNum; i++) {
@@ -41,20 +50,31 @@ export async function startVoting(session: any, ctx: any, message: string, confi
     voteStatus: VoteStatus.Pending
   }
   voteInfo.votedPerson.push(session.userId)
-  session.send(message + '\n' + helpMessage + '\n' + ProgressMessageConstructor(1))
   if (votingGroup[GroupNum] === 'voting') {
-    session.send(`当前群聊已经有人发起了投票，请等待投票结束后再发起新的投票，或使用${config.votingCommand} no取消投票`)
+    session.send(<>
+      <quote id={(session.messageId).toString()}/>
+      <at id={session.userId}/>
+      {" "}
+      当前群聊已经有人发起了投票，请等待投票结束后再发起新的投票，或使用{config.votingCommand} no取消投票
+    </>)
     return
   }
+  session.send(message + '\n' + helpMessage + '\n' + ProgressMessageConstructor(1))
   logger.info(GroupNum + '发起了一次投票')
   votingGroup[GroupNum] = 'voting'
-  //Todo 未实现单个群聊不能重复发起投票的限制
 
   const dispose = ctx.middleware(async (session: any, next: any) => {
-    logger.info(session.content + session.guildId)
+    // logger.info(session.content + session.guildId)
     if (session.guildId === GroupNum) {
       if (voteInfo.votedPerson.includes(session.userId)) {
-        session.send('您已经投过票了')
+        if (session.content.startsWith(config.votingCommand)) {
+          session.send(<>
+            <quote id={(session.messageId).toString()}/>
+            <at id={session.userId}/>
+            {" "}
+            你已经投过票了
+          </>)
+        }
         return next()
       }
       const split_message = session.content.split(' ')
@@ -76,23 +96,31 @@ export async function startVoting(session: any, ctx: any, message: string, confi
           voteInfo.disagreeNum++
           voteInfo.voteStatus = VoteStatus.Disagree
         } else {
-          session.send('请输入正确的指令')
+          session.send('请输入正确的指令\n' + helpMessage)
           return next()
         }
       }
     }
     return next()
   })
+  let timeCounter = 0
   while (voteInfo.voteStatus === VoteStatus.Pending) {
     await sleep(1000)
+    timeCounter++
+    if (timeCounter >= config.voteTimeOut) {
+      session.send('投票超时')
+      dispose()
+      votingGroup[GroupNum] = 'unvoting'
+      return false
+    }
   }
   if (voteInfo.voteStatus === VoteStatus.Disagree) {
-    session.send('投票未通过')
+    // logger.log('投票未通过')
     dispose()
     votingGroup[GroupNum] = 'unvoting'
     return false
   } else {
-    session.send('投票通过')
+    // session.send('投票通过')
     dispose()
     votingGroup[GroupNum] = 'unvoting'
     return true
