@@ -12,7 +12,7 @@ export interface Config {
   servers: {
     Address: string
     Port: number
-    Password?: string
+    Password: string
     ServerName?: string
   }[]
   rconConnectingTimeout: number
@@ -57,10 +57,10 @@ export const Config: Schema = Schema.intersect([
   ]),
   Schema.object({
     servers: Schema.array(Schema.object({
-      ServerName: Schema.string().description('Display name').default('MyServer'),
-      Address: Schema.string().description('Server Address').default('Hypixel.net'),
+      ServerName: Schema.string().description('Display name').default('Hypiexl'),
+      Address: Schema.string().description('Server Address').default('hypixel.net'),
       Port: Schema.number().description('RCON Port').default(25575).min(1).max(65535),
-      Password: Schema.string().description('RCON Password').default('MyPassword'),
+      Password: Schema.string().description('RCON Password').default('MyPasswd'),
     })).role('table').description('服务器列表，请点击右侧的添加行按钮添加服务器信息'),
   }).description('服务器配置'),
 
@@ -70,6 +70,11 @@ export const Config: Schema = Schema.intersect([
 export function apply(ctx: Context, config: Config) {
   // write your plugin here
   const logger = ctx.logger('minecraft-rcon-command')
+  // 检查密码是否为空
+  if (config.servers.some(server => server.Password === '')) {
+    logger.error('\n！插件已自动关闭！密码为空，Minecraft RCON在密码为空的情况下会自动关闭，请在Minecraft服务端的server.properties文件中设置rcon-password后重新调整插件配置')
+    throw new Error('密码为空，请在插件配置页面填写密码')
+  }
   logger.info(config)
   const rcons = config.servers.map(server => new Rcon({
     host: server.Address,

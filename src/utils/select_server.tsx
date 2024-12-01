@@ -14,18 +14,16 @@ export const selectServer = async (session: any, ctx: any, config: any, rcons: a
   }
   session.send(selectingMessage)
   let index: number = undefined;
-  while (true) {
-    index = await session.prompt(config.indexSelectingTimeout)
-    if (index >= 0 && index < rcons.length) {
-      break;
-    } else {
-      session.send(<>
-        <at id={session.userId}/>
-        <quote id={(session.messageId).toString()}/>
-        {" "}
-        输入的数字不在范围内，请输入0-{rcons.length - 1}选择服务器
-      </>)
-    }
+  index = await session.prompt(config.indexSelectingTimeout)
+  if (index >= 0 && index < rcons.length) {
+    return index;
+  } else {
+    await session.send(<>
+      <at id={session.userId}/>
+      <quote id={(session.messageId).toString()}/>
+      {" "}
+      输入的数字不在范围内，请输入0-{rcons.length - 1}选择服务器
+    </>)
+    return undefined
   }
-  return index;
 }
