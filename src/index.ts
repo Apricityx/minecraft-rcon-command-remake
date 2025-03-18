@@ -8,6 +8,7 @@ export const name = 'minecraft-rcon-command-remake'
 export interface Config {
   isSelectingServer: boolean
   indexSelectingTimeout: number
+  isEnableSlash: boolean
   checkAllowedGroup: boolean
   servers: {
     Address: string
@@ -28,6 +29,7 @@ export const Config: Schema = Schema.intersect([
   Schema.object({
     isSelectingServer: Schema.boolean().default(true).description('是否在执行命令的时候让执行者选择服务器'),
     rconConnectingTimeout: Schema.number().description('RCON连接超时时间(ms)').default(1000).min(10).max(60000),
+    isEnableSlash: Schema.boolean().default(true).description('是否在指令前加/，不同版本的Minecraft的RCON需求不同，如果你的指令一直报错可以试试关闭这个选项'),
     indexSelectTimeout: Schema.number().description('选择服务器的超时时间(s)').default(60).min(5).max(600),
     checkAllowedGroup: Schema.boolean().default(false).description('是否要求只能在指定群聊中发起投票，避免把机器人拉到自己的群聊并运行指令的问题'),
   }).description('全局配置'),
@@ -112,6 +114,13 @@ export function apply(ctx: Context, config: Config) {
           }
           const rcon = rcons[index]
           await rcon.connect()
+          if (config.isEnableSlash) {
+            result += await rcon.send(`${command}`)
+          } else {
+            if (command.startsWith('/')) {
+              result += await rcon.send(`${command.split('/')[1]}`)
+            }
+          }
           result += await rcon.send(command)
           rcon.disconnect()
         } catch (e) {
@@ -178,7 +187,12 @@ export function apply(ctx: Context, config: Config) {
           result += `${config.servers[rcons.indexOf(rcon)].ServerName}:`
           try {
             await rcon.connect()
-            result += await rcon.send(`/whitelist ${action} ${player}`)
+            /// todo
+            if (config.isEnableSlash) {
+              result += await rcon.send(`/whitelist ${action} ${player}`)
+            } else {
+              result += await rcon.send(`whitelist ${action} ${player}`)
+            }
             result += '\n'
             rcon.disconnect()
           } catch (e) {
@@ -196,7 +210,12 @@ export function apply(ctx: Context, config: Config) {
         result += `${config.servers[rcons.indexOf(rcon)].ServerName}:`
         try {
           await rcon.connect()
-          let online_message = await rcon.send(`/list`)
+          let online_message;
+          if (config.isEnableSlash) {
+            online_message = await rcon.send('/list')
+          } else {
+            online_message = await rcon.send('list')
+          }
           let onlinePlayerCount = online_message.split('There are')[1].split('of a')[0].trim()
           let maxPlayerCount = online_message.split('max of')[1].split('players online')[0].trim()
           if (onlinePlayerCount === "0") {
